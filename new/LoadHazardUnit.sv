@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module LoadHazardUnit(input logic [4:0] idexrs1, input logic [4:0] idexrs2, input logic exmemrd [4:0], input logic [6:0] exmemopcodein,
+module LoadHazardUnit(input logic [4:0] idexrs1, input logic [4:0] idexrs2, input logic [4:0] exmemrd , input logic [6:0] exmemopcodein,
                       output logic hazard);
     always_comb begin
         if(exmemopcodein == 7'b0000011)begin

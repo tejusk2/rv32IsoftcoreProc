@@ -12,7 +12,7 @@ module Shift_Unit(input logic [31:0] val1, input logic [31:0] val2, input logic 
             end
             //SRA
             2'b10:begin
-                out = val1 >>> val2;
+                out = $signed(val1) >>> val2[4:0];
             end
             //default to avoid latches
             default:begin

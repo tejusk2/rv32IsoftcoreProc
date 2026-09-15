@@ -9,16 +9,19 @@ module Instruction_Decode(input logic sys_clk, input logic [31:0]instruction,inp
         if(~rst_n)begin
             rs1 <= 5'b0;
             rs2 <= 5'b0;
+            rd <= 5'b0;
             imm <= 32'b0;
             opcode <= 7'b0;
             funct3 <= 3'b0;
             funct7 <= 7'b0;
+            pc_decode_out <= 32'b0;
         end else begin
+            pc_decode_out <= pc_fetch_in;
             opcode <= instruction[6:0];
             case (instruction[6:0])
                 //R Type instruction, set immediate to zero and grab the register values
                 7'b0110011:begin
-                    imm <= 5'b0;
+                    imm <= 32'b0;
                     rs1 <= instruction[19:15];
                     rs2 <= instruction[24:20];
                     rd <= instruction[11:7];
@@ -62,7 +65,7 @@ module Instruction_Decode(input logic sys_clk, input logic [31:0]instruction,inp
                 end
                 //Jump and Link Instruction
                 7'b1101111:begin
-                    imm = {{12{instruction[31]}}, instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
+                    imm <= {{11{instruction[31]}}, instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
                     rs1 <= 5'b0;
                     rs2 <= 5'b0;
                     rd <= instruction[11:7];

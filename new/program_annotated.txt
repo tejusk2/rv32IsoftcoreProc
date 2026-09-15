@@ -1,0 +1,16 @@
+====================================================================================================
+RISC-V RV32I BRAM Program Disassembly & Memory Map
+File: program_annotated.txt
+====================================================================================================
+
+Word PC (Addr) | Hex Code | Assembly Instruction | Description & Operation
+----------------------------------------------------------------------------------------------------
+PC = 0 (0x00)  | 00000193 | addi x3, x0, 0       | Initialize register x3 = 0
+PC = 1 (0x01)  | 00BEC137 | lui  x2, 0x00BEC     | Load Upper Immediate: x2[31:12] = 0x00BEC (12,500,992)
+PC = 2 (0x02)  | C2010113 | addi x2, x2, -992    | Add -992 to x2 -> x2 = 12,500,000 (delay threshold)
+PC = 3 (0x03)  | 0011C193 | xori x3, x3, 1       | TOGGLE LED state: x3 = x3 ^ 1 (toggles bit 0: 0 <-> 1)
+PC = 4 (0x04)  | 003020A3 | sw   x3, 1(x0)       | Store word x3 to RAM address 1 (updates mimo / LED bit)
+PC = 5 (0x05)  | 00000093 | addi x1, x0, 0       | Reset delay counter x1 = 0
+PC = 6 (0x06)  | 00108093 | addi x1, x1, 1       | Increment delay counter: x1 = x1 + 1
+PC = 7 (0x07)  | FE209FE3 | bne  x1, x2, -2      | Branch to PC = 6 if x1 != x2 (offset = -2 bytes)
+PC = 8 (0x08)  | FF7FF2EF | jal  x5, -10         | Jump to PC = 3 (xori toggle) (offset = -10 bytes)

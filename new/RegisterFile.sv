@@ -5,7 +5,7 @@ module RegisterFile(input logic sys_clk, input logic rst_n,
                     input logic [4:0] read_reg1, input logic [4:0] read_reg2,
                         output logic [31:0] reg1, output logic [31:0] reg2); 
     //2D 32*32 unpacked array
-    logic [31:0] reg_file [31:0]; 
+    logic [31:0] reg_file [31:0] = '{default: 0}; 
     //sequential writing
     always_ff @(posedge sys_clk)begin
         if(~rst_n)begin
@@ -23,5 +23,4 @@ module RegisterFile(input logic sys_clk, input logic rst_n,
         reg1 = reg_file[read_reg1][31:0];
         reg2 = reg_file[read_reg2][31:0];
     end
-
 endmodule

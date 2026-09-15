@@ -3,7 +3,7 @@ module Execute(input logic sys_clk, input logic rst_n, input logic [31:0] progra
                input logic [31:0] register1val, input logic [31:0] register2val, input logic [31:0] immediate,
                input logic [6:0] opcode, input logic [2:0] funct3, input logic [6:0] funct7, output logic [31:0] execute_out, output logic [4:0] rdExec,
                output logic [31:0] rs2, output logic [3:0] memOpType, output logic [6:0] opcode_out,
-               output logic [2:0] execfunct3out, output logic [31:0]pc_out, output logic branch_flush);
+               output logic [2:0] execfunct3out, output logic [31:0]pc_out, output logic flush);
 
             logic [31:0] muxedOutput;
             logic [31:0] muxedInput;
@@ -17,10 +17,11 @@ module Execute(input logic sys_clk, input logic rst_n, input logic [31:0] progra
             logic [31:0] shiftOutput;
             logic branch_comparator_output;
             logic [31:0] PC_imm;
-            logic [31:0] pc_seq;
             logic [3:0] mem_intm;
+            logic branch_flush;
             //Immediate Type Multiplexer
             assign muxedInput = (useImmediate) ? immediate : register2val;
+            assign pc_out = PC_imm;
             //Arithmetic Unit, 0 is add, 1 is subtract
             Arithmetic_Unit addSubUnit(
             .val1(register1val),
@@ -93,7 +94,7 @@ module Execute(input logic sys_clk, input logic rst_n, input logic [31:0] progra
                             end
                             //SRL SRA
                             3'd5:begin
-                                shiftChoice = (funct7[5]) ? 2'b01 : 2'b10;
+                                shiftChoice = (funct7[5]) ? 2'b10 : 2'b01;
                                 muxedOutput = shiftOutput;
                             end
                             //OR
@@ -140,7 +141,7 @@ module Execute(input logic sys_clk, input logic rst_n, input logic [31:0] progra
                             end
                             //SRLI SRAI
                             3'd5:begin
-                                shiftChoice = (immediate[10]) ? 2'b01 : 2'b10;
+                                shiftChoice = (immediate[10]) ? 2'b10 : 2'b01;
                                 muxedOutput = shiftOutput;
                             end
                             //ORI
@@ -171,18 +172,18 @@ module Execute(input logic sys_clk, input logic rst_n, input logic [31:0] progra
                     end
                     //B Type Instructions
                     7'b1100011:begin
-                       PC_imm = (branch_comparator_output) ? program_counter + immediate : program_counter;
-                       branch_flush = 1'b1;
+                       PC_imm = (branch_comparator_output) ? program_counter + ($signed(immediate )>>> 1) : program_counter;
+                       branch_flush = branch_comparator_output;
                     end
                     //Jump and Link Instruction
                     7'b1101111:begin
-                       PC_imm = program_counter + immediate;
+                       PC_imm = program_counter + ($signed(immediate) >>> 1);
                        muxedOutput = pcnext;
                        branch_flush = 1'b1;
                     end
                     //Jump and Link Reg
                     7'b1100111:begin
-                      PC_imm = register1val + immediate;
+                      PC_imm = (register1val + immediate) & ~32'h1;
                       muxedOutput = pcnext;
                       branch_flush = 1'b1;
                     end
@@ -211,15 +212,15 @@ module Execute(input logic sys_clk, input logic rst_n, input logic [31:0] progra
             //Sequential Logic to Set Pipeline Registers and update PC
             always_ff @(posedge sys_clk) begin
                 if(~rst_n)begin
-                    pc_seq <= 32'b0;
                     execute_out <= 32'b0;
                     rdExec <= 5'b0;
                     rs2 <= 32'b0;
                     memOpType <= 4'b0000;
                     opcode_out <= 7'b0;
                     execfunct3out <= 3'b0;
+                    flush <= 1'b0;
                 end else begin
-                    pc_seq <= PC_imm;
+                    flush <= branch_flush;
                     execute_out <= muxedOutput;
                     rdExec <= rdDecode;
                     rs2 <= register2val;

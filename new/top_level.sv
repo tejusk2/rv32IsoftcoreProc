@@ -2,17 +2,18 @@
 module top_level(
         input logic sys_clk_p,
         input logic sys_clk_n,
-        input logic rst_pb
+        input logic rst_pb,
+        output logic led
     );
     //signals
     logic sys_clk;
     //Instruction Cache Signals
-    logic [1:0] w_en; 
+    logic [1:0] w_en = 2'b0; 
     logic r_en;
-    logic [31:0] instruction_write_addr; 
+    logic [31:0] instruction_write_addr = 32'b0; 
     logic [31:0] program_counter;
     logic [31:0] pcnext;
-    logic [31:0] inram_data_in; 
+    logic [31:0] inram_data_in = 32'b0; 
     logic [31:0] inram_data_out;
     //Register File Signals
     logic [4:0] register_file_write_addr;
@@ -51,6 +52,7 @@ module top_level(
     //Flush Controller Signals
     logic [31:0] flush_controlled_ifid_instruction;
     logic [6:0] flush_controlled_idex_opcode;
+    logic [4:0] flush_controlled_idex_rd;
     logic branch_flush;
     //Forwarding Controller Signals
     logic [31:0] fu_controlled_rs1;
@@ -61,6 +63,9 @@ module top_level(
     logic hazardPCSel;
     logic [31:0] muxed_pcsel;
     logic flush;
+    //MIMO
+    logic led;
+    
 
     assign muxed_pcsel = (hazardPCSel) ? pc_out_decode : pc_out_exec;
     assign flush = branch_flush | hazardPCSel;
@@ -74,17 +79,19 @@ module top_level(
         .I(sys_clk_p),
         .IB(sys_clk_n)
     );
+
     // 32 * 4096 BRAM Memory for Instructions
     xilinx_simple_dual_port_bram #(
         .DATA_WIDTH(32),
-        .ADDR_WIDTH(12)
+        .ADDR_WIDTH(12),
+        .RAM_INIT_FILE("program.hex") 
     ) instructionRAM (
         .clk(sys_clk),
-        .en_a(w_en),
-        .en_b(1),
+        .en_a(|w_en),
+        .en_b(1'b1),
         .we_a(w_en),
-        .addr_a(instruction_write_addr),
-        .addr_b(program_counter),
+        .addr_a(instruction_write_addr[11:0]),
+        .addr_b(program_counter[11:0]),
         .din_a(inram_data_in),
         .dout_b(inram_data_out)
     );
@@ -94,20 +101,21 @@ module top_level(
         .ADDR_WIDTH(14)
     ) storageRAM (
         .clk(sys_clk),
-        .en_a(ram_w_en),
+        .en_a(|ram_w_en),
         .en_b(ram_r_en),
         .we_a(ram_w_en),
-        .addr_a(ram_w_addr),
-        .addr_b(ram_r_addr),
+        .addr_a(ram_w_addr[13:0]),
+        .addr_b(ram_r_addr[13:0]),
         .din_a(ram_w_data),
-        .dout_b(ram_r_data)
+        .dout_b(ram_r_data),
+        .mimo(led)
     );
     //instruction fetch
     Instruction_Fetch inFetch(
         .program_counter(program_counter),
         .sys_clk(sys_clk),
         .rst_n(~rst_pb),
-        .pcplusfour(pcnext),
+        .pcnext(pcnext),
         .pc_out_fetch(pc_out_fetch)
     );
     //register file
@@ -140,9 +148,9 @@ module top_level(
     //execute
     Execute execute_stage(
         .sys_clk(sys_clk),
-        .rst_n(rst_pb),
-        .rdDecode(destination_register),
-        .program_counter(program_counter),
+        .rst_n(~rst_pb),
+        .rdDecode(flush_controlled_idex_rd),
+        .program_counter(pc_out_decode),
         .pcnext(pcnext),
         .register1val(fu_controlled_rs1),
         .register2val(fu_controlled_rs2),
@@ -157,7 +165,7 @@ module top_level(
         .rs2(rs2_exec_out),
         .execfunct3out(execfunct3out),
         .pc_out(pc_out_exec),
-        .branch_flush(branch_flush)
+        .flush(branch_flush)
     );
     //Memory
     MemoryStoreLoad memCtrl(
@@ -172,7 +180,7 @@ module top_level(
         .w_en(ram_w_en),
         .r_en(ram_r_en),
         .r_addr(ram_r_addr),
-        .w_addr(ram_r_addr),
+        .w_addr(ram_w_addr),
         .w_data(ram_w_data),
         .rd_out(dest_mem),
         .memopcode_out(memopcode_out),
@@ -206,17 +214,19 @@ module top_level(
         .branch_taken(flush),
         .ifid_instruction(inram_data_out),
         .idexopcode(opcode),
+        .idex_rd_addr(destination_register),
         .flushed_ifid(flush_controlled_ifid_instruction),
-        .flushed_idex(flush_controlled_idex_opcode)
+        .flushed_idex(flush_controlled_idex_opcode),
+        .flushed_idex_rd(flush_controlled_idex_rd)
     );
     //Forwarding Unit to fix hazards
     ForwardingMultiplexer forwarding_unit(
         .idexrs1(register_file_read1),
         .idexrs2(register_file_read2),
         .exmem_rd(dest_exec),
-        .memwb_rd(dest_mem),
+        .memwb_rd(register_file_write_addr),
         .exmem(execute_out),
-        .memwb(exec_out_pipeline),
+        .memwb(register_file_write_data),
         .regfile_rs1(register_file_readout1),
         .regfile_rs2(register_file_readout2),
         .rs1(fu_controlled_rs1),
@@ -227,7 +237,7 @@ module top_level(
         .idexrs1(register_file_read1),
         .idexrs2(register_file_read2),
         .exmemrd(dest_exec),
-        .exemopcodein(opcode_out),
+        .exmemopcodein(opcode_out),
         .hazard(hazardPCSel)
     );
 

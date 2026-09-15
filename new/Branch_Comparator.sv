@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
-module BranchComparator(input logic [31:0] val1, input logic [31:0] val2, input logic [2:0] funct3, output logic logical_out);
-    assign logical_out = out;
+module Branch_Comparator(input logic [31:0] val1, input logic [31:0] val2, input logic [2:0] funct3, output logic logical_out);
     logic out;
+    assign logical_out = out;
     always_comb begin
         case(funct3)
             //BEQ

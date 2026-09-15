@@ -1,13 +1,12 @@
 `timescale 1ns / 1ps
 module MemoryStoreLoad(input logic sys_clk, input logic rst_n, input logic [3:0] opType, input logic [6:0] memopcode_in, input logic [2:0] funct3in,
                         input logic [31:0] execute_out, input logic [4:0] rd_in,  input logic [31:0] rs2,
-                        output logic [1:0] w_en, output logic r_en, output logic [31:0] r_addr, output logic [31:0] w_addr, output lofic [31:0] w_data,
+                        output logic [1:0] w_en, output logic r_en, output logic [31:0] r_addr, output logic [31:0] w_addr, output logic [31:0] w_data,
                         output logic [4:0] rd_out, output logic [6:0] memopcode_out, output logic [31:0] exec_out_pipeline, 
                         output logic [2:0] memfunct3out);
     always_ff @(posedge sys_clk ) begin
         if(~rst_n)begin
             rd_out <= 5'b0;
-            loaded_word <= 32'b0;
             w_en <= 1'b0;
             r_en <= 1'b0;
             r_addr <= 32'b0;
